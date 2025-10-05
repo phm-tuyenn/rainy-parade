@@ -1,12 +1,13 @@
-import {APIProvider, Map, InfoWindow} from '@vis.gl/react-google-maps';
+import {APIProvider, Map, InfoWindow, useApiIsLoaded} from '@vis.gl/react-google-maps';
 import { useEffect, useState } from 'react';
+import { Button } from 'react-bootstrap';
 
 export default function GGMap({ onData }) {
   const [point, setPoint] = useState({lat: 0, lng: 0, updated: false})
   const [content, setContent] = useState("nothing bro wtf you find")
+  const apiIsLoaded = useApiIsLoaded()
 
-  const handleClick = (ev) => {
-    let point = ev.detail.latLng
+  const getPos = (point) => {
     fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${point.lat},${point.lng}&key=AIzaSyBXJQ9KUyxq3WAaU8InwzUbWi1GMCiShco`)
     .then(res => res.json())
     .then((res) => {
@@ -14,23 +15,28 @@ export default function GGMap({ onData }) {
         setContent(res.results[3].formatted_address)
       } else setContent("nothing bro wtf you find")
     })
-    setPoint({lat: point.lat, lng: point.lng, updated: true})
-  };
-  
-  useEffect(() => {
-    onData(content, point)
-  }, [content])
+  }
 
-  useEffect(() => {
-    if (!point.updated && navigator.geolocation) {
+  const handleClick = (ev) => {
+    let point = ev.detail.latLng
+    getPos(point)
+    setPoint({lat: point.lat, lng: point.lng, updated: true}) 
+  };
+
+  const getUserLocation = (ignore) => {
+    if ((!point.updated || ignore) && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
+          getPos({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+            updated: true
+          })
           setPoint({
             lat: position.coords.latitude,
             lng: position.coords.longitude,
             updated: true
           });
-          onData(content, point)
         },
         (err) => {
           console.log(err.message);
@@ -38,11 +44,19 @@ export default function GGMap({ onData }) {
         { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
       );
     } else {
-      console.log("Geolocation is not supported by this browser.");
+      console.log("Geolocation is not supported by this browser.", point.updated, navigator.geolocation);
     }
+  }
+
+  useEffect(() => {
+    getUserLocation(false)
   }, [])
 
-  return (
+  useEffect(() => {
+    onData(content, point)
+  }, [point, content]) 
+
+  return (<>
     <APIProvider apiKey={"AIzaSyBXJQ9KUyxq3WAaU8InwzUbWi1GMCiShco"}>
       <Map
         style={{width: '100%', height: '100%'}}
@@ -50,6 +64,7 @@ export default function GGMap({ onData }) {
         defaultZoom={3}
         gestureHandling='greedy'
         onClick={handleClick}
+        disableDefaultUI
       >
         {(content !== "nothing bro wtf you find") ?
         <InfoWindow position={{lat: point.lat, lng: point.lng}}>
@@ -60,5 +75,7 @@ export default function GGMap({ onData }) {
         }
       </Map>
   </APIProvider>
-  );
+  <Button style={{zIndex: "999", position: "absolute", bottom: 20, left: 20}}
+  onClick={() => getUserLocation(true)}>To your location</Button>
+  </>);
 }
