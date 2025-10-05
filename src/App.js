@@ -61,7 +61,7 @@ export default function App() {
   const updateData = (date) => {
     setWait(true)
     setData(placeholderData)
-    fetch("/api/forecast", {
+    fetch("https://rainy-parade-api-only.vercel.app/api/forecast", {
       method: "POST",
       mode: "cors",
       headers: {
