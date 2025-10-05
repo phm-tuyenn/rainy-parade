@@ -69,13 +69,11 @@ export default function GGMap({ onData }) {
         {(content !== "nothing bro wtf you find") ?
         <InfoWindow position={{lat: point.lat, lng: point.lng}}>
           {content}
-          <br/>
-          {JSON.stringify(point)}
         </InfoWindow> : <></>
         }
       </Map>
   </APIProvider>
   <Button style={{zIndex: "999", position: "absolute", bottom: 20, left: 20}}
-  onClick={() => getUserLocation(true)}>To your location</Button>
+  onClick={() => getUserLocation(true)}>Vị trí của bạn</Button>
   </>);
 }
