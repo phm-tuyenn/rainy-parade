@@ -1,25 +1,24 @@
-import logo from './logo.svg';
-import './App.css';
+import 'bootstrap/dist/css/bootstrap.min.css';
+import GGMap from "./GGMap";
+import { Row, Col } from 'react-bootstrap';
+import { useState } from 'react';
 
 function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
+  const [content, setContent] = useState("")
+  const [point, setPoint] = useState({})
+  const handleData = (content, point) => {
+    setContent(content)
+    setPoint(point)
+  }
+
+  return (<Row style={{width: "100vw", height: "100vh"}}>
+    <Col md={{span: 8}}><GGMap onData={handleData}/></Col>
+    <Col md={{span: 4}}>
+      {content}
+      <br/>
+      {JSON.stringify(point)}
+    </Col>
+  </Row>);
 }
 
 export default App;
