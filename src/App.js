@@ -4,21 +4,31 @@ import { Row, Col } from 'react-bootstrap';
 import { useEffect, useState } from 'react';
 
 const placeholderData = {
-  "climatological_means": {
-    "avg_tmax_c": 0,
-    "avg_tmin_c": 0,
-    "avg_humidity_percent": 0,
-    "avg_wind_speed_ms": 0,
-    "avg_pressure_hpa": 0,
-    "avg_uv_index": 0,
-    "avg_discomfort_index_c": 0
+  "query_date": "",
+  "climatological_probability_and_means": {
+    "date_context": "",
+    "climatological_means": {
+      "avg_tmax_c": 0,
+      "avg_tmin_c": 0,
+      "avg_humidity_percent": 0,
+      "avg_wind_speed_ms": 0,
+      "avg_pressure_hpa": 0,
+      "avg_uv_index": 0,
+      "avg_discomfort_index_c": 0
+    },
+    "probabilities": {
+      "p_rain_percent": 0,
+      "p_extreme_heat_percent": 0,
+      "p_extreme_wind_percent": 0,
+      "main_risk_level": "THẤP"
+    }
   },
-  "probabilities": {
-    "p_rain_percent": 0,
-    "p_extreme_heat_percent": 0,
-    "p_extreme_wind_percent": 0,
-    "main_risk_level": "THẤP"
-  }
+  "short_term_forecast_details": null,
+  "air_quality_context": {
+    "pm25_concentration": 0,
+    "pm10_concentration": 0
+  },
+  "data_summary": ""
 }
 
 const getDay = (day) => {
@@ -67,7 +77,7 @@ export default function App() {
       if (res.status === 200) return res.json()
       else return {error: true}
     }).then(res => { 
-      if (!res.error) setData(res.climatological_probability_and_means)
+      if (!res.error) setData(res)
       else setData(placeholderData)
       setWait(false)
     })
@@ -96,8 +106,13 @@ export default function App() {
           updateData(e.target.value)
         }}/>
       {(wait) ? <p>Đang tải ...</p> : <hr/>}
-      <Data key="tmaxc" label={"Nhiệt độ cao nhất: "} data={data.climatological_means.avg_tmax_c}/>
-      {JSON.stringify(data)}
+      <Data key="tmaxc" label={"Nhiệt độ cao nhất: "} data={data.climatological_probability_and_means.climatological_means.avg_tmax_c}/>
+      <Data key="tminc" label={"Nhiệt độ thấp nhất: "} data={data.climatological_probability_and_means.climatological_means.avg_tmin_c}/>
+      <Data key="humid" label={"Độ ẩm: "} data={data.climatological_probability_and_means.climatological_means.avg_humidity_percent}/>
+      <Data key="wind" label={"Tốc độ gió: "} data={data.climatological_probability_and_means.climatological_means.avg_wind_speed_ms}/>
+      <Data key="pressure" label={"Áp suất không khí: "} data={data.climatological_probability_and_means.climatological_means.avg_pressure_hpa}/>
+      <Data key="uv" label={"Chỉ số tia UV: "} data={data.climatological_probability_and_means.climatological_means.avg_uv_index}/>
+      <Data key="discomfort" label={"Nhiệt độ cảm nhận: "} data={data.climatological_probability_and_means.climatological_means.avg_discomfort_index_c}/>
     </Col>
   </Row>);
 }
