@@ -1,7 +1,7 @@
 import 'bootstrap/dist/css/bootstrap.min.css';
 import GGMap from "./GGMap";
-import { Row, Col } from 'react-bootstrap';
-import { useEffect, useState } from 'react';
+import { Row, Col, Spinner } from 'react-bootstrap';
+import { useState } from 'react';
 
 const placeholderData = {
   "query_date": "",
@@ -91,9 +91,9 @@ export default function App() {
 
   return (<Row style={{width: "100vw", height: "100vh"}}>
     <Col md={{span: 8}}><GGMap onData={handleData}/></Col>
-    <Col md={{span: 4}} className='py-3'>
-      <h4>{(content !== "nothing bro wtf you find" ? content : "Đang tìm kiếm ...")}</h4>
-      <h6><b>Kinh độ: {point.lng}° | Vĩ độ: {point.lat}°</b></h6>
+    <Col md={{span: 4}} className='pt-4'>
+      <h4 className='pb-1'>{(content !== "nothing bro wtf you find" ? content : "Đang tìm kiếm ...")}</h4>
+      <h6><b>Kinh độ: {Math.round(point.lng)}° | Vĩ độ: {Math.round(point.lat)}°</b></h6>
       <label for="date">Ngày cần dự đoán: </label>
       <input
         type="date"
@@ -105,14 +105,28 @@ export default function App() {
           setTargetDate(e.target.value)
           updateData(e.target.value)
         }}/>
-      {(wait) ? <p>Đang tải ...</p> : <hr/>}
-      <Data key="tmaxc" label={"Nhiệt độ cao nhất: "} data={data.climatological_probability_and_means.climatological_means.avg_tmax_c}/>
-      <Data key="tminc" label={"Nhiệt độ thấp nhất: "} data={data.climatological_probability_and_means.climatological_means.avg_tmin_c}/>
-      <Data key="humid" label={"Độ ẩm: "} data={data.climatological_probability_and_means.climatological_means.avg_humidity_percent}/>
-      <Data key="wind" label={"Tốc độ gió: "} data={data.climatological_probability_and_means.climatological_means.avg_wind_speed_ms}/>
-      <Data key="pressure" label={"Áp suất không khí: "} data={data.climatological_probability_and_means.climatological_means.avg_pressure_hpa}/>
-      <Data key="uv" label={"Chỉ số tia UV: "} data={data.climatological_probability_and_means.climatological_means.avg_uv_index}/>
-      
+        <br/>
+      <i style={{fontSize: "small"}}>Hãy chọn nơi muốn dự đoán trên bản đồ và ngày cần dự đoán. <br/> Nếu không thể tìm thấy vị trí hiện tại của bạn, hãy nhấn nút màu xanh ở góc trái dưới màn hình.</i>
+      <hr/>
+      {(wait) ? <Spinner animation="border" role="status">
+          <span className="visually-hidden"><p>Đang tải ...</p></span>
+        </Spinner> : <>
+        <h4><b>Dự đoán thời tiết ngày {targetDate}</b></h4>
+        <Data key="tmaxc" label={"Nhiệt độ cao nhất: "} data={data.climatological_probability_and_means.climatological_means.avg_tmax_c}/>
+        <Data key="tminc" label={"Nhiệt độ thấp nhất: "} data={data.climatological_probability_and_means.climatological_means.avg_tmin_c}/>
+        <Data key="humid" label={"Độ ẩm: "} data={data.climatological_probability_and_means.climatological_means.avg_humidity_percent}/>
+        <Data key="wind" label={"Tốc độ gió: "} data={data.climatological_probability_and_means.climatological_means.avg_wind_speed_ms}/>
+        <Data key="pressure" label={"Áp suất không khí: "} data={data.climatological_probability_and_means.climatological_means.avg_pressure_hpa}/>
+        <Data key="uv" label={"Chỉ số tia UV: "} data={data.climatological_probability_and_means.climatological_means.avg_uv_index}/>
+        <hr/>
+        <Data key="rainp" label={"Khả năng mưa: "} data={data.climatological_probability_and_means.probabilities.p_rain_percent}/>
+        <Data key="hotp" label={"Khả năng nắng nóng gay gắt: "} data={data.climatological_probability_and_means.probabilities.p_extreme_heat_percent}/>
+        <Data key="wind" label={"Khả năng có gió lớn: "} data={data.climatological_probability_and_means.probabilities.p_extreme_wind_percent}/>
+        <Data key="risk" label={"Mức độ rủi ro: "} data={data.climatological_probability_and_means.probabilities.main_risk_level}/>
+        <hr/>
+        <Data key="pm25" label={"Chỉ số bụi mịn PM25: "} data={data.air_quality_context.pm25_concentration}/>
+        <Data key="pm10" label={"Chỉ số bụi mịn PM10: "} data={data.air_quality_context.pm10_concentration}/>
+      </>}
     </Col>
   </Row>);
 }

@@ -1,11 +1,10 @@
-import {APIProvider, Map, InfoWindow, useApiIsLoaded} from '@vis.gl/react-google-maps';
+import {APIProvider, Map, InfoWindow} from '@vis.gl/react-google-maps';
 import { useEffect, useState } from 'react';
 import { Button } from 'react-bootstrap';
 
 export default function GGMap({ onData }) {
   const [point, setPoint] = useState({lat: 0, lng: 0, updated: false})
   const [content, setContent] = useState("nothing bro wtf you find")
-  const apiIsLoaded = useApiIsLoaded()
 
   const getPos = (point) => {
     fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${point.lat},${point.lng}&key=AIzaSyBXJQ9KUyxq3WAaU8InwzUbWi1GMCiShco`)
