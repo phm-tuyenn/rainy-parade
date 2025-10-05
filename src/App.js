@@ -1,25 +1,42 @@
-import logo from './logo.svg';
-import './App.css';
+import 'bootstrap/dist/css/bootstrap.min.css';
+import GGMap from "./GGMap";
+import { Row, Col } from 'react-bootstrap';
+import { useState } from 'react';
 
 function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
+  const [content, setContent] = useState("")
+  const [point, setPoint] = useState({})
+  const [lol, setLol] = useState("")
+
+  const handleData = (content, point) => {
+    fetch("http://127.0.0.1:8000/api/forecast", {
+      method: "POST",
+      mode: "cors",
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        "latitude": point.lat,
+        "longitude": point.lng,
+        "target_date": "2025-10-05"
+      })
+    })
+    .then(res => res.json()) 
+    .then(res => setLol(JSON.stringify(res)))
+    setContent(content)
+    setPoint(point)
+  }
+
+  return (<Row style={{width: "100vw", height: "100vh"}}>
+    <Col md={{span: 8}}><GGMap onData={handleData}/></Col>
+    <Col md={{span: 4}}>
+      {content}
+      <br/>
+      {JSON.stringify(point)}
+      <br/>
+      {lol}
+    </Col>
+  </Row>);
 }
 
 export default App;

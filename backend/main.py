@@ -1,115 +1,108 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import Dict, Any
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
-# Import các hàm từ các file khác
-from .data_fetcher import fetch_historical_climatology, fetch_short_term_forecast, fetch_air_quality
-from .climatological_predictor import transform_power_data_to_dataframe, calculate_climatological_metrics, \
+# Import các hàm từ các module backend đã tạo
+from .data_fetcher import (
+    fetch_historical_climatology,
+    fetch_air_quality,
+    fetch_short_term_forecast,
+)
+from .climatological_predictor import (
+    transform_power_data_to_dataframe, #NASA POWER IS REQUIRED
+    calculate_climatological_metrics,
     calculate_discomfort_index
-
-# Khởi tạo ứng dụng FastAPI
-app = FastAPI(
-    title="Climatological Weather Predictor API",
-    description="API dự báo khí hậu và thời tiết dựa trên dữ liệu lịch sử NASA POWER và dự báo ngắn hạn Open-Meteo."
 )
 
+app = FastAPI()
 
-# Định nghĩa cấu trúc dữ liệu đầu vào (Payload)
+
 class PredictionRequest(BaseModel):
     latitude: float
     longitude: float
     target_date: date
 
 
-@app.get("/")
-def read_root():
-    """Endpoint kiểm tra trạng thái API."""
-    return {"status": "Service is running", "version": "1.0.1"}
-
-
-# ==============================================================================
-# ENDPOINT CHÍNH
-# ==============================================================================
+# --- ENDPOINT TỔNG HỢP DUY NHẤT ---
 
 @app.post("/api/forecast", response_model=Dict[str, Any])
 def get_full_forecast_for_day(request: PredictionRequest):
     """
-    Endpoint chính: Tính toán Xác suất Khí hậu, Dự báo Ngắn hạn và Chất lượng Không khí
-    cho một ngày và địa điểm cụ thể.
+    Endpoint tổng hợp: Xác suất Khí hậu (Dài hạn) + Dự báo Chi tiết (Ngắn hạn) + AQI.
+    Sử dụng NASA POWER cho lịch sử và Open-Meteo cho dự báo/AQI.
     """
 
-    # 1. DỮ LIỆU KHÍ HẬU LỊCH SỬ (NASA POWER)
-    # Lấy dữ liệu thô (đã được cấu hình để lấy từ 1994 đến năm hiện tại)
-    raw_climatology_data = fetch_historical_climatology(request.latitude, request.longitude)
+    # 1. TÍNH XÁC SUẤT KHÍ HẬU DÀI HẠN (NASA POWER)
+    raw_climatology_data = fetch_historical_climatology(
+        request.latitude,
+        request.longitude
+    )
 
-    # Chuyển dữ liệu thô sang DataFrame và làm sạch (-999.0 thành NaN)
+    if not raw_climatology_data:
+        raise HTTPException(status_code=500,
+                            detail="Lỗi khi truy cập dữ liệu lịch sử NASA POWER. Không thể tính Xác suất Khí hậu.")
+
+    # Tiền xử lý dữ liệu và tính toán Xác suất/Trung bình Lịch sử
     historical_df = transform_power_data_to_dataframe(raw_climatology_data)
+    climatological_metrics = calculate_climatological_metrics(historical_df, request.target_date)
 
-    # Tính toán các chỉ số xác suất và trung bình khí hậu
-    climatological_results = calculate_climatological_metrics(historical_df, request.target_date)
+    if climatological_metrics.get("error"):
+        raise HTTPException(status_code=500, detail=climatological_metrics["error"])
 
     # 2. DỰ BÁO CHI TIẾT NGẮN HẠN (OPEN-METEO)
-
-    # Xác định xem ngày mục tiêu có nằm trong phạm vi dự báo 14 ngày không
     today = date.today()
     delta = request.target_date - today
-    is_short_term_forecast = delta.days >= 0 and delta.days < 16
+    is_short_term_forecast = delta.days >= 0 and delta.days <= 16  # Open-Meteo cho 16 ngày
 
     short_term_data = None
 
     if is_short_term_forecast:
-        # Lấy dữ liệu dự báo ngắn hạn (sử dụng openmeteo_requests client)
-        # Hàm này trả về một dictionary của các giá trị của ngày đầu tiên.
+        # Lấy dự báo 16 ngày chi tiết
         forecast_raw = fetch_short_term_forecast(request.latitude, request.longitude)
 
-        if forecast_raw:
-            try:
-                # SỬ DỤNG TÊN BIẾN _MAX ĐÃ ĐƯỢC SỬA LỖI
-                t_max = forecast_raw['temperature_2m_max']
-                humidity = forecast_raw['relative_humidity_2m_max']
-                wind_speed = forecast_raw['wind_speed_10m_max']
-                precipitation_mm = forecast_raw['precipitation_sum']
-                uv_index = forecast_raw['uv_index_max']
-                pressure = forecast_raw['surface_pressure_max']
+        # Open-Meteo trả về các mảng cùng độ dài, ta tìm index của ngày mục tiêu
+        time_list = forecast_raw.get('time', [])
 
-                # Tính chỉ số khó chịu cho ngày dự báo
-                discomfort_index = calculate_discomfort_index(t_max, humidity, wind_speed)
+        try:
+            target_date_str = str(request.target_date)  # YYYY-MM-DD
+            target_index = time_list.index(target_date_str)
 
-                short_term_data = {
-                    "source": "Open-Meteo Daily Forecast",
-                    "t_max_c": t_max,
-                    "humidity_percent": humidity,
-                    "wind_speed_ms": wind_speed,
-                    "pressure_hpa": pressure,
-                    "uv_index": uv_index,
-                    "rain_prob_percent": precipitation_mm,
-                    "discomfort_index_c": discomfort_index,
-                }
-            except KeyError as e:
-                # Xử lý nếu tên khóa vẫn không khớp (rất hiếm khi xảy ra với client chính thức)
-                print(f"Lỗi Key Error khi parsing dữ liệu Open-Meteo: Thiếu key {e}")
-                pass
-            except IndexError:
-                # Xử lý nếu dữ liệu không có giá trị
-                pass
+            # Trích xuất dữ liệu tại index đó
+            t_max = forecast_raw['temperature_2m_max'][target_index]
+            humidity = forecast_raw['relative_humidity_2m'][target_index]
+            wind_speed = forecast_raw['wind_speed_10m_max'][target_index]
+            rain_prob = forecast_raw['precipitation_probability'][target_index]
+            uv_index = forecast_raw['uv_index_max'][target_index]
+            pressure = forecast_raw['surface_pressure'][target_index]
 
-    # 3. CHẤT LƯỢNG KHÔNG KHÍ (OPEN-METEO AQI)
-    # Lấy dữ liệu AQI (chỉ lấy cho ngày hiện tại)
-    air_quality_data = {}
-    if request.target_date == today:
-        air_quality_data = fetch_air_quality(request.latitude, request.longitude)
+            # Tính chỉ số thông minh
+            short_term_data = {
+                "source": "Open-Meteo Forecast API (7-16 ngày)",
+                "t_max_c": t_max,
+                "humidity_percent": humidity,
+                "wind_speed_ms": wind_speed,
+                "pressure_hpa": pressure,
+                "uv_index": uv_index,
+                "rain_prob_percent": rain_prob,
+                "discomfort_index_c": calculate_discomfort_index(t_max, humidity, wind_speed),
+            }
+        except ValueError:
+            # Ngày mục tiêu không nằm trong phạm vi 16 ngày (hoặc API lỗi)
+            pass
+        except KeyError:
+            # Lỗi cấu trúc dữ liệu trả về từ API
+            pass
 
-    # 4. TỔNG HỢP VÀ TRẢ VỀ KẾT QUẢ
+    # 3. LẤY CHẤT LƯỢNG KHÔNG KHÍ HIỆN TẠI (OPEN-METEO AQI)
+    # Open-Meteo AQI không cần API Key
+    aqi_info = fetch_air_quality(request.latitude, request.longitude)
 
-    # Kết quả dự báo ngắn hạn (nếu có) sẽ ưu tiên hơn trung bình khí hậu
-    final_weather = short_term_data if short_term_data else climatological_results.get("climatological_means", {})
-
+    # 4. TỔNG HỢP KẾT QUẢ CUỐI CÙNG
     return {
-        "location": {"latitude": request.latitude, "longitude": request.longitude},
-        "target_date": request.target_date.isoformat(),
-
-        "current_prediction": final_weather,
-        "climatological_probabilities": climatological_results.get("probabilities", {}),
-        "air_quality_index": air_quality_data,
+        "query_date": str(request.target_date),
+        "climatological_probability_and_means": climatological_metrics,
+        "short_term_forecast_details": short_term_data,
+        "air_quality_context": aqi_info,
+        "data_summary": "Dữ liệu Xác suất được tính từ NASA POWER (1985-2015). Dự báo chi tiết và AQI được cung cấp bởi Open-Meteo."
     }
