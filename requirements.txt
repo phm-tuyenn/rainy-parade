@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+python-multipart
+# Thư viện cho dự án của bạn
+requests
+pandas
+numpy
+openmeteo-requests
+requests-cache
+retry-requests

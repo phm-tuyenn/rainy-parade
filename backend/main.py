@@ -118,3 +118,7 @@ def get_full_forecast_for_day(request: PredictionRequest):
         "air_quality_context": aqi_info,
         "data_summary": "Dữ liệu Xác suất được tính từ NASA POWER (1985-2015). Dự báo chi tiết và AQI được cung cấp bởi Open-Meteo."
     }
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
