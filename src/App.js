@@ -61,7 +61,7 @@ export default function App() {
   const updateData = (date) => {
     setWait(true)
     setData(placeholderData)
-    fetch("http://127.0.0.1:8000/api/forecast", {
+    fetch("/api/forecast", {
       method: "POST",
       mode: "cors",
       headers: {
@@ -112,7 +112,7 @@ export default function App() {
       <Data key="wind" label={"Tốc độ gió: "} data={data.climatological_probability_and_means.climatological_means.avg_wind_speed_ms}/>
       <Data key="pressure" label={"Áp suất không khí: "} data={data.climatological_probability_and_means.climatological_means.avg_pressure_hpa}/>
       <Data key="uv" label={"Chỉ số tia UV: "} data={data.climatological_probability_and_means.climatological_means.avg_uv_index}/>
-      <Data key="discomfort" label={"Nhiệt độ cảm nhận: "} data={data.climatological_probability_and_means.climatological_means.avg_discomfort_index_c}/>
+      
     </Col>
   </Row>);
 }
